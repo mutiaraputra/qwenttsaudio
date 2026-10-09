@@ -1,6 +1,7 @@
 import {
   checkAppPassword,
   dashscopeJson,
+  DEFAULT_TTS_MODEL,
   ENROLL_MODEL,
   MAX_AUDIO_BYTES,
   parseDashError,
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
   const file = form.get("audio");
   const audioUrl = String(form.get("audioUrl") ?? "").trim();
   const preferredName = String(form.get("preferredName") ?? "").trim() || "suara-saya";
-  const targetModel = String(form.get("targetModel") ?? "").trim();
+  const targetModel = String(form.get("targetModel") ?? "").trim() || DEFAULT_TTS_MODEL;
   const region = form.get("region");
 
   let audioData: string;

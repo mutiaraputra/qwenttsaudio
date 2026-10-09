@@ -43,7 +43,13 @@ export function parseDashError(text: string): string {
       j?.code ??
       j?.output?.message;
     const reqId = j?.request_id ? ` (request_id: ${j.request_id})` : "";
-    if (msg) return `${typeof msg === "string" ? msg : JSON.stringify(msg)}${reqId}`;
+    if (msg) {
+      const raw = typeof msg === "string" ? msg : JSON.stringify(msg);
+      if (/no pipeline for/i.test(raw)) {
+        return `${raw}${reqId} — nama model tidak dikenali DashScope. Biarkan kolom Model pada nilai bawaan (${DEFAULT_TTS_MODEL}); nama model lama seperti "qwen-audio-3.0-tts-plus" bukan model kloning yang valid.`;
+      }
+      return `${raw}${reqId}`;
+    }
   } catch {
     // respons bukan JSON
   }

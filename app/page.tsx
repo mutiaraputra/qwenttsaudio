@@ -422,6 +422,11 @@ export default function Home() {
                 onChange={(e) => setModel(e.target.value)}
                 className="w-full rounded-xl border border-white/15 bg-black/30 px-3 py-2.5 text-sm outline-none focus:border-violet-400/60"
               />
+              <span className="mt-1.5 block text-[11px] leading-snug text-white/40">
+                Biarkan nilai bawaan <code className="text-white/60">{DEFAULT_MODEL}</code>. Nama model lain
+                (mis. <code className="text-white/60">qwen-audio-3.0-tts-plus</code> dari skrip Python lama) tidak
+                dikenali DashScope.
+              </span>
             </label>
           </div>
 
