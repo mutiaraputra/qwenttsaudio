@@ -61,7 +61,7 @@ export default function Home() {
   const [unlocked, setUnlocked] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
 
-  const [region, setRegion] = useState<Region>("cn");
+  const [region, setRegion] = useState<Region>("intl");
   const [model, setModel] = useState(DEFAULT_MODEL);
   const [voices, setVoices] = useState<SavedVoice[]>([]);
 
@@ -193,16 +193,17 @@ export default function Home() {
     setCloneResult(null);
     setCloning(true);
     try {
+      const safeName = voiceName.trim().replace(/[^A-Za-z0-9_]/g, "_") || "suara_saya";
       const fd = new FormData();
       if (cloneMode === "upload" && file) fd.set("audio", file);
       if (cloneMode === "url") fd.set("audioUrl", audioUrlInput);
-      fd.set("preferredName", voiceName || "suara-saya");
+      fd.set("preferredName", safeName);
       fd.set("targetModel", model);
       fd.set("region", region);
       const j = await api("/api/clone", { method: "POST", body: fd });
       const sv: SavedVoice = {
         voice: j.voice,
-        name: voiceName || "suara-saya",
+        name: safeName,
         model,
         region,
         createdAt: Date.now(),
@@ -502,9 +503,12 @@ export default function Home() {
               <input
                 value={voiceName}
                 onChange={(e) => setVoiceName(e.target.value)}
-                placeholder="mis. suara-saya"
+                placeholder="mis. suara_saya"
                 className="w-full rounded-xl border border-white/15 bg-black/30 px-3 py-2.5 text-sm outline-none placeholder:text-white/30 focus:border-violet-400/60"
               />
+              <span className="mt-1.5 block text-[11px] leading-snug text-white/40">
+                Hanya huruf, angka, dan garis bawah (_) — karakter lain diganti otomatis.
+              </span>
             </label>
 
             <button

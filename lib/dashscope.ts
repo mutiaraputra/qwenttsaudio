@@ -48,6 +48,9 @@ export function parseDashError(text: string): string {
       if (/no pipeline for/i.test(raw)) {
         return `${raw}${reqId} — nama model tidak dikenali DashScope. Biarkan kolom Model pada nilai bawaan (${DEFAULT_TTS_MODEL}); nama model lama seperti "qwen-audio-3.0-tts-plus" bukan model kloning yang valid.`;
       }
+      if (/free quota has been exhausted/i.test(raw)) {
+        return `${raw}${reqId} — kuota gratis model ini habis. Buka konsol Alibaba Cloud Model Studio, lengkapi informasi pembayaran (atau matikan mode "use free tier only" bila pembayaran sudah diatur), lalu coba lagi.`;
+      }
       return `${raw}${reqId}`;
     }
   } catch {

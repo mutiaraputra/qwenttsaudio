@@ -67,7 +67,7 @@ npm run dev                  # http://localhost:3000
 1. Push repo ini ke GitHub.
 2. Di [vercel.com](https://vercel.com), **Add New → Project** dan pilih repo ini (framework terdeteksi otomatis sebagai Next.js).
 3. Tambahkan **Environment Variables**:
-   - `DASHSCOPE_API_KEY` (wajib) — dari [Model Studio Alibaba Cloud](https://modelstudio.console.alibabacloud.com/) (global) atau [Bailian](https://bailian.console.aliyun.com/) (Tiongkok). Pastikan region key sesuai pilihan region di UI.
+   - `DASHSCOPE_API_KEY` (wajib) — dari [Model Studio Alibaba Cloud](https://modelstudio.console.alibabacloud.com/) (global) atau [Bailian](https://bailian.console.aliyun.com/) (Tiongkok). Kunci global **hanya berlaku** di region Internasional; kunci Bailian hanya di Tiongkok — jika salah, muncul "Invalid API-key".
    - `APP_ACCESS_PASSWORD` (opsional, disarankan untuk deployment publik).
    - `DASHSCOPE_REGION` (opsional) — `cn` atau `intl`.
 4. **Deploy**.
