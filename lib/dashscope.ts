@@ -7,6 +7,25 @@ export type Region = keyof typeof REGIONS;
 
 export const DEFAULT_TTS_MODEL = "qwen3-tts-vc-2026-01-22";
 export const ENROLL_MODEL = "qwen-voice-enrollment";
+export const AUDIO_TTS_MODEL = "qwen-audio-3.0-tts-plus";
+
+export function isAudioTtsModel(model: string): boolean {
+  return /^qwen-audio-/.test(model);
+}
+
+export function resolveMaasBaseUrl(region: unknown): string | null {
+  const ws = process.env.DASHSCOPE_WORKSPACE_ID;
+  if (!ws) return null;
+  const intl =
+    region === "intl"
+      ? true
+      : region === "cn"
+        ? false
+        : process.env.DASHSCOPE_REGION === "intl";
+  return intl
+    ? `https://${ws}.ap-southeast-1.maas.aliyuncs.com`
+    : `https://${ws}.cn-beijing.maas.aliyuncs.com`;
+}
 export const MAX_TEXT_LENGTH = 600;
 export const MAX_AUDIO_BYTES = 4 * 1024 * 1024; // batas payload Vercel ~4.5MB
 

@@ -2,10 +2,12 @@ import {
   checkAppPassword,
   dashscopeJson,
   DEFAULT_TTS_MODEL,
+  isAudioTtsModel,
   MAX_TEXT_LENGTH,
   parseDashError,
   requireApiKey,
   resolveBaseUrl,
+  resolveMaasBaseUrl,
 } from "@/lib/dashscope";
 
 export const runtime = "nodejs";
@@ -48,13 +50,33 @@ export async function POST(req: Request) {
     return Response.json({ error: "Nama voice (suara) wajib diisi." }, { status: 400 });
   }
 
-  const input: Record<string, unknown> = { text, voice };
-  if (language && language !== "Auto") {
-    input.language_type = language;
+  let payload: Record<string, unknown>;
+  let url: string;
+
+  if (isAudioTtsModel(model)) {
+    const maasBase = resolveMaasBaseUrl(body.region);
+    if (!maasBase) {
+      return Response.json(
+        {
+          error: `DASHSCOPE_WORKSPACE_ID belum diatur. Model ${model} memakai endpoint maas.aliyuncs.com yang wajib menyertakan Workspace ID (konsol Model Studio → pojok kanan atas → Workspace ID). Tambahkan env tersebut di pengaturan project lalu redeploy, atau gunakan model bawaan ${DEFAULT_TTS_MODEL}.`,
+        },
+        { status: 500 }
+      );
+    }
+    url = `${maasBase}/api/v1/services/audio/tts/SpeechSynthesizer`;
+    payload = {
+      model,
+      input: { text, voice, format: "wav", sample_rate: 24000 },
+    };
+  } else {
+    const input: Record<string, unknown> = { text, voice };
+    if (language && language !== "Auto") {
+      input.language_type = language;
+    }
+    url = `${resolveBaseUrl(body.region)}/api/v1/services/aigc/multimodal-generation/generation`;
+    payload = { model, input };
   }
 
-  const payload = { model, input };
-  const url = `${resolveBaseUrl(body.region)}/api/v1/services/aigc/multimodal-generation/generation`;
   const { ok, status, body: resBody, text: resText } = await dashscopeJson(
     url,
     process.env.DASHSCOPE_API_KEY as string,

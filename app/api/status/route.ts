@@ -6,13 +6,19 @@ export async function GET(req: Request) {
     const provided = req.headers.get("x-app-password");
     if (provided !== process.env.APP_ACCESS_PASSWORD) {
       return Response.json(
-        { hasKey: Boolean(process.env.DASHSCOPE_API_KEY), passwordRequired: true, unlocked: false },
+        {
+          hasKey: Boolean(process.env.DASHSCOPE_API_KEY),
+          hasWorkspace: Boolean(process.env.DASHSCOPE_WORKSPACE_ID),
+          passwordRequired: true,
+          unlocked: false,
+        },
         { status: 401 }
       );
     }
   }
   return Response.json({
     hasKey: Boolean(process.env.DASHSCOPE_API_KEY),
+    hasWorkspace: Boolean(process.env.DASHSCOPE_WORKSPACE_ID),
     passwordRequired: required,
     unlocked: true,
   });

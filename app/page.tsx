@@ -23,9 +23,34 @@ type SavedVoice = {
 type AudioResult = { src: string; filename: string; note?: string };
 
 const DEFAULT_MODEL = "qwen3-tts-vc-2026-01-22";
+const AUDIO_TTS_MODEL = "qwen-audio-3.0-tts-plus";
 const VOICES_KEY = "qwenttsaudio.voices.v1";
 const MAX_AUDIO_MB = 4;
 const MAX_TEXT_LENGTH = 600;
+
+const MODEL_OPTIONS: { value: string; label: string }[] = [
+  { value: DEFAULT_MODEL, label: "Qwen3-TTS — kloning klasik (10 bahasa)" },
+  { value: AUDIO_TTS_MODEL, label: "Qwen-Audio 3.0 TTS Plus — resmi dukung bahasa Indonesia" },
+];
+
+const SAMPLE_LANGUAGE_OPTIONS = [
+  { value: "id", label: "Indonesia" },
+  { value: "zh", label: "Mandarin" },
+  { value: "en", label: "Inggris" },
+  { value: "ms", label: "Melayu" },
+  { value: "th", label: "Thai" },
+  { value: "vi", label: "Vietnam" },
+  { value: "ja", label: "Jepang" },
+  { value: "ko", label: "Korea" },
+  { value: "es", label: "Spanyol" },
+  { value: "fr", label: "Prancis" },
+  { value: "de", label: "Jerman" },
+  { value: "it", label: "Italia" },
+  { value: "pt", label: "Portugis" },
+  { value: "ru", label: "Rusia" },
+  { value: "ar", label: "Arab" },
+  { value: "fil", label: "Filipino" },
+];
 
 const REGION_OPTIONS: { value: Region; label: string }[] = [
   { value: "cn", label: "Tiongkok (Beijing)" },
@@ -56,6 +81,7 @@ function formatDate(ts: number): string {
 export default function Home() {
   const [status, setStatus] = useState<{
     hasKey: boolean;
+    hasWorkspace: boolean;
     passwordRequired: boolean;
   } | null>(null);
   const [unlocked, setUnlocked] = useState(false);
@@ -63,7 +89,9 @@ export default function Home() {
 
   const [region, setRegion] = useState<Region>("intl");
   const [model, setModel] = useState(DEFAULT_MODEL);
+  const [sampleLang, setSampleLang] = useState("id");
   const [voices, setVoices] = useState<SavedVoice[]>([]);
+  const isAudioModel = model === AUDIO_TTS_MODEL;
 
   // ==== form kloning ====
   const [cloneMode, setCloneMode] = useState<"upload" | "url">("upload");
@@ -89,10 +117,15 @@ export default function Home() {
     fetch("/api/status")
       .then(async (res) => {
         const j = await res.json().catch(() => null);
-        if (j) setStatus({ hasKey: !!j.hasKey, passwordRequired: !!j.passwordRequired });
+        if (j)
+          setStatus({
+            hasKey: !!j.hasKey,
+            hasWorkspace: !!j.hasWorkspace,
+            passwordRequired: !!j.passwordRequired,
+          });
         setUnlocked(res.ok);
       })
-      .catch(() => setStatus({ hasKey: false, passwordRequired: false }));
+      .catch(() => setStatus({ hasKey: false, hasWorkspace: false, passwordRequired: false }));
     try {
       const raw = localStorage.getItem(VOICES_KEY);
       if (raw) setVoices(JSON.parse(raw));
@@ -136,7 +169,12 @@ export default function Home() {
       if (res.ok) {
         setUnlocked(true);
         const j = await res.json().catch(() => null);
-        if (j) setStatus({ hasKey: !!j.hasKey, passwordRequired: !!j.passwordRequired });
+        if (j)
+          setStatus({
+            hasKey: !!j.hasKey,
+            hasWorkspace: !!j.hasWorkspace,
+            passwordRequired: !!j.passwordRequired,
+          });
       } else {
         setError("Password akses salah.");
       }
@@ -200,6 +238,7 @@ export default function Home() {
       fd.set("preferredName", safeName);
       fd.set("targetModel", model);
       fd.set("region", region);
+      if (isAudioModel) fd.set("languageHints", sampleLang);
       const j = await api("/api/clone", { method: "POST", body: fd });
       const sv: SavedVoice = {
         voice: j.voice,
@@ -319,7 +358,8 @@ export default function Home() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2 text-xs">
-          <Badge>{DEFAULT_MODEL}</Badge>
+          <Badge>{model}</Badge>
+          {isAudioModel && <Badge>Bahasa Indonesia resmi</Badge>}
           <Badge>24 kHz</Badge>
           <Badge>Maks 600 karakter</Badge>
         </div>
@@ -331,6 +371,18 @@ export default function Home() {
           Tambahkan environment variable <code className="rounded bg-black/30 px-1">DASHSCOPE_API_KEY</code>{" "}
           di pengaturan project (lokal: <code className="rounded bg-black/30 px-1">.env.local</code>,
           Vercel: Settings → Environment Variables) lalu redeploy.
+        </div>
+      )}
+
+      {status && !status.hasWorkspace && isAudioModel && (
+        <div className="mb-6 rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
+          <strong className="font-semibold">DASHSCOPE_WORKSPACE_ID belum diatur.</strong>{" "}
+          Model <code className="rounded bg-black/30 px-1">{AUDIO_TTS_MODEL}</code> memakai
+          endpoint maas yang wajib menyertakan Workspace ID. Ambil dari konsol Model Studio
+          (ikon pojok kanan atas → Workspace ID), tambahkan env{" "}
+          <code className="rounded bg-black/30 px-1">DASHSCOPE_WORKSPACE_ID</code> di
+          pengaturan project lalu redeploy — atau kembali ke model{" "}
+          <code className="rounded bg-black/30 px-1">{DEFAULT_MODEL}</code>.
         </div>
       )}
 
@@ -418,17 +470,45 @@ export default function Home() {
             </label>
             <label className="block">
               <span className="mb-1.5 block text-xs font-medium text-white/60">Model</span>
-              <input
+              <select
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
                 className="w-full rounded-xl border border-white/15 bg-black/30 px-3 py-2.5 text-sm outline-none focus:border-violet-400/60"
-              />
+              >
+                {MODEL_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value} className="bg-zinc-900">
+                    {o.label}
+                  </option>
+                ))}
+              </select>
               <span className="mt-1.5 block text-[11px] leading-snug text-white/40">
-                Biarkan nilai bawaan <code className="text-white/60">{DEFAULT_MODEL}</code>. Nama model lain
-                (mis. <code className="text-white/60">qwen-audio-3.0-tts-plus</code> dari skrip Python lama) tidak
-                dikenali DashScope.
+                {isAudioModel
+                  ? "Kloning via endpoint maas — resmi mendukung bahasa Indonesia. Butuh env DASHSCOPE_WORKSPACE_ID di server."
+                  : `Model bawaan. Untuk bahasa Indonesia resmi, pilih ${AUDIO_TTS_MODEL}.`}
               </span>
             </label>
+            {isAudioModel && (
+              <label className="col-span-2 block">
+                <span className="mb-1.5 block text-xs font-medium text-white/60">
+                  Bahasa contoh audio
+                </span>
+                <select
+                  value={sampleLang}
+                  onChange={(e) => setSampleLang(e.target.value)}
+                  className="w-full rounded-xl border border-white/15 bg-black/30 px-3 py-2.5 text-sm outline-none focus:border-violet-400/60"
+                >
+                  {SAMPLE_LANGUAGE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value} className="bg-zinc-900">
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+                <span className="mt-1.5 block text-[11px] leading-snug text-white/40">
+                  Bahasa utama audio referensi — pilih yang paling mendekati agar kloning
+                  paling akurat.
+                </span>
+              </label>
+            )}
           </div>
 
           <form onSubmit={submitClone} className="space-y-4">
@@ -594,22 +674,29 @@ export default function Home() {
               </button>
             </label>
 
-            <label className="block">
-              <span className="mb-1.5 block text-xs font-medium text-white/60">
-                Bahasa (language_type)
-              </span>
-              <select
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-                className="w-full rounded-xl border border-white/15 bg-black/30 px-3 py-2.5 text-sm outline-none focus:border-violet-400/60"
-              >
-                {LANGUAGE_OPTIONS.map((l) => (
-                  <option key={l} value={l} className="bg-zinc-900">
-                    {l}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {isAudioModel ? (
+              <p className="text-xs leading-snug text-white/40">
+                Bahasa dideteksi otomatis dari teks. Voice kloningan model ini resmi
+                mendukung bahasa Indonesia, Mandarin, Inggris, dan 13 bahasa lainnya.
+              </p>
+            ) : (
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-medium text-white/60">
+                  Bahasa (language_type)
+                </span>
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  className="w-full rounded-xl border border-white/15 bg-black/30 px-3 py-2.5 text-sm outline-none focus:border-violet-400/60"
+                >
+                  {LANGUAGE_OPTIONS.map((l) => (
+                    <option key={l} value={l} className="bg-zinc-900">
+                      {l}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
 
             <button
               type="submit"
@@ -653,7 +740,7 @@ export default function Home() {
 
       <footer className="mt-12 border-t border-white/10 pt-6 text-xs text-white/40">
         <p>
-          Dibuat dengan Next.js • Model <code className="text-white/60">{DEFAULT_MODEL}</code>{" "}
+          Dibuat dengan Next.js • Model <code className="text-white/60">{model}</code>{" "}
           via DashScope API. Audio referensi: 10–20 detik, WAV/MP3/M4A, jernih tanpa
           noise. API key hanya tersimpan di environment server dan tidak pernah
           dikirim ke browser.

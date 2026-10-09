@@ -3,10 +3,12 @@ import {
   dashscopeJson,
   DEFAULT_TTS_MODEL,
   ENROLL_MODEL,
+  isAudioTtsModel,
   MAX_AUDIO_BYTES,
   parseDashError,
   requireApiKey,
   resolveBaseUrl,
+  resolveMaasBaseUrl,
 } from "@/lib/dashscope";
 
 export const runtime = "nodejs";
@@ -52,17 +54,47 @@ export async function POST(req: Request) {
     );
   }
 
-  const payload = {
-    model: ENROLL_MODEL,
-    input: {
-      action: "create",
-      target_model: targetModel,
-      preferred_name: preferredName,
-      audio: { data: audioData },
-    },
-  };
+  let payload: Record<string, unknown>;
+  let url: string;
+  let languageHints = "";
 
-  const url = `${resolveBaseUrl(region)}/api/v1/services/audio/tts/customization`;
+  if (isAudioTtsModel(targetModel)) {
+    const maasBase = resolveMaasBaseUrl(region);
+    if (!maasBase) {
+      return Response.json(
+        {
+          error: `DASHSCOPE_WORKSPACE_ID belum diatur. Model ${targetModel} memakai endpoint maas.aliyuncs.com yang wajib menyertakan Workspace ID (konsol Model Studio → pojok kanan atas → Workspace ID). Tambahkan env tersebut di pengaturan project lalu redeploy, atau gunakan model bawaan ${DEFAULT_TTS_MODEL}.`,
+        },
+        { status: 500 }
+      );
+    }
+    // prefix maas: hanya huruf & angka, maksimal 10 karakter
+    const prefix = preferredName.replace(/[^A-Za-z0-9]/g, "").slice(0, 10) || "myvoice";
+    languageHints = String(form.get("languageHints") ?? "id").trim() || "id";
+    payload = {
+      model: "voice-enrollment",
+      input: {
+        action: "create_voice",
+        target_model: targetModel,
+        prefix,
+        url: audioData,
+        language_hints: [languageHints],
+      },
+    };
+    url = `${maasBase}/api/v1/services/audio/tts/customization`;
+  } else {
+    payload = {
+      model: ENROLL_MODEL,
+      input: {
+        action: "create",
+        target_model: targetModel,
+        preferred_name: preferredName,
+        audio: { data: audioData },
+      },
+    };
+    url = `${resolveBaseUrl(region)}/api/v1/services/audio/tts/customization`;
+  }
+
   const { ok, status, body, text } = await dashscopeJson(
     url,
     process.env.DASHSCOPE_API_KEY as string,
@@ -82,5 +114,5 @@ export async function POST(req: Request) {
       { status: 502 }
     );
   }
-  return Response.json({ voice, targetModel });
+  return Response.json({ voice, targetModel, languageHints: languageHints || undefined });
 }

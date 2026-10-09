@@ -8,6 +8,9 @@ Web studio **kloning suara (voice cloning)** dan **text-to-speech** berbasis **Q
 
 - **Kloning suara** — unggah file audio (atau tempel URL audio publik), beri nama, dapat voice kloningan.
 - **Sintesis teks → suara** — hingga 600 karakter per permintaan, pilihan bahasa (`language_type`).
+- **Dua model kloningan**:
+  - `qwen3-tts-vc-2026-01-22` (kloning klasik) — 10 bahasa, **tanpa** bahasa Indonesia.
+  - `qwen-audio-3.0-tts-plus` — **resmi mendukung bahasa Indonesia** + 15 bahasa lain, via endpoint `maas.aliyuncs.com` (perlu env `DASHSCOPE_WORKSPACE_ID`).
 - **Riwayat voice** — voice yang pernah Anda buat tersimpan di browser (localStorage).
 - **Dua region API** — Tiongkok (Beijing) dan Singapura (Internasional), bisa dipilih di UI.
 - **Proteksi opsional** — password akses situs via env `APP_ACCESS_PASSWORD` (agar orang lain tidak memakai kuota API key Anda).
@@ -46,12 +49,30 @@ Web studio **kloning suara (voice cloning)** dan **text-to-speech** berbasis **Q
    ```
    Respons: JSON berisi `output.audio.url` (berlaku 24 jam) atau data audio base64.
 
+3. **Kloning suara (model `qwen-audio-3.0-tts-plus`)** — `POST https://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/api/v1/services/audio/tts/customization`
+   ```json
+   {
+     "model": "voice-enrollment",
+     "input": {
+       "action": "create_voice",
+       "target_model": "qwen-audio-3.0-tts-plus",
+       "prefix": "myvoice",
+       "url": "https://contoh.com/suara.wav",
+       "language_hints": ["id"]
+     }
+   }
+   ```
+   Respons: `output.voice_id`. `language_hints` menentukan bahasa utama audio referensi — pilih `id` untuk bahasa Indonesia. Sintesisnya memakai
+   `POST /api/v1/services/audio/tts/SpeechSynthesizer` pada host yang sama.
+
+   > Catatan: nama `prefix` hanya boleh huruf dan angka (maksimal 10 karakter). Audio referensi harus berupa URL publik — mode unggahan diubah menjadi data-URI dan mungkin ditolak; jika gagal, gunakan mode URL audio.
+
 Endpoint aplikasi:
 
 | Route | Fungsi |
 | --- | --- |
-| `GET /api/status` | Cek status API key & proteksi password |
-| `POST /api/clone` | Kloning suara (multipart: `audio` / `audioUrl`, `preferredName`, `targetModel`, `region`) |
+| `GET /api/status` | Cek status API key, Workspace ID & proteksi password |
+| `POST /api/clone` | Kloning suara (multipart: `audio` / `audioUrl`, `preferredName`, `targetModel`, `languageHints`, `region`) |
 | `POST /api/tts` | Sintesis (JSON: `text`, `voice`, `model`, `language`, `region`) |
 
 ## Menjalankan secara lokal
@@ -68,6 +89,7 @@ npm run dev                  # http://localhost:3000
 2. Di [vercel.com](https://vercel.com), **Add New → Project** dan pilih repo ini (framework terdeteksi otomatis sebagai Next.js).
 3. Tambahkan **Environment Variables**:
    - `DASHSCOPE_API_KEY` (wajib) — dari [Model Studio Alibaba Cloud](https://modelstudio.console.alibabacloud.com/) (global) atau [Bailian](https://bailian.console.aliyun.com/) (Tiongkok). Kunci global **hanya berlaku** di region Internasional; kunci Bailian hanya di Tiongkok — jika salah, muncul "Invalid API-key".
+   - `DASHSCOPE_WORKSPACE_ID` (wajib untuk `qwen-audio-3.0-tts-plus`) — konsol Model Studio → ikon di pojok kanan atas → Workspace ID (format `id-xxxxxxxx`).
    - `APP_ACCESS_PASSWORD` (opsional, disarankan untuk deployment publik).
    - `DASHSCOPE_REGION` (opsional) — `cn` atau `intl`.
 4. **Deploy**.
